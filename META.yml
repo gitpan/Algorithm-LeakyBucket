@@ -17,6 +17,5 @@ no_index:
   directory:
     - t
     - inc
-requires:
-  Cache::Memcached::Fast: 0.19
-version: 0.06
+requires: {}
+version: 0.07

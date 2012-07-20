@@ -7,7 +7,7 @@ Algorithm::LeakyBucket - Perl implementation of leaky bucket rate limiting
 =head1 SYNOPSIS
 
  use Bucket::Leaky;
- my $bucket = Bucket::Leacky->new( ticks => 1, seconds => 1 ); # one per second
+ my $bucket = Bucket::Leaky->new( ticks => 1, seconds => 1 ); # one per second
 
  while($something_happening)
  {
@@ -15,39 +15,62 @@ Algorithm::LeakyBucket - Perl implementation of leaky bucket rate limiting
      {
          # allowed
          do_something();
+	 # maybe decide to change limits?
+	 $bucket->ticks(2);
+	 $bucket->seconds(5);
      }
  }
 
-=head1 DESCRIPTION
 
-Implements leaky bucket as a rate limiter.  If you pass memcached options it will also use memcached.
-If the memcached servers are not availble it falls back to the local counters.
+=head1 CONSTRUCTOR
 
-This version uses Cache::Memcached::Fast
+There are two required options to get the module to do anything useful.  C<ticks> and C<seconds> set the number of 
+ticks allowed per that time period.  If C<ticks> is 3 and C<seconds> is 14, you will be able to run 3 ticks every 14 
+seconds.  Optionally you can pass C<memcached_servers> and C<memcached_key> to distribute the limiting across multiple
+processes.
+
 
  my $bucket = Bucket::Leaky->new( ticks => $ticks, seconds => $every_x_seconds,
                                   memcached_key => 'some_key',
                                   memcached_servers => [ { address => 'localhost:11211' } ] );
 
-Multiple instances of the code would all then halt each other from breaking the rate limit. (But see the BUGS section)
+=DESCRIPTION
 
-This is an early alpha version of the code.  I built this as a rate limiter that I could toss in my
-mod_perl implementations to keep some clients from slamming an API.
+Implements leaky bucket as a rate limiter.  While the code will do rate limiting for a single process, it was intended
+as a limiter for multiple processes. (But see the BUGS section)
+
+The syntax of the C<memcached_servers> argument should be the syntax expected by the local memcache module.  If
+Cache::Memcached::Fast is installed, use its syntax, otherwise you can use the syntax for Cache::Memcached.  If 
+neither module is found it will use a locally defined set of vars internally to track rate limiting.  Obviously
+this keeps the code from being used across processes. 
+
+This is an alpha version of the code.  Some early bugs have been ironed out and its in produciton in places, so we would
+probably transition it to beta once we have seen it work for a bit. 
 
 =cut
 
-use 5.008009;
+use 5.008008;
 use strict;
 use warnings;
-use Carp qw(cluck);
-use Cache::Memcached::Fast;
-our $VERSION = '0.06';
+use Carp qw(cluck croak);
+our $VERSION = '0.07';
 
 sub new
 {
 	my ($class, %args) = @_;
 	my $self = {};
 	bless ($self, $class);
+
+	eval {
+		require Cache::Memcached::Fast;
+		$self->{__mc_module_fast} = 1;
+	};
+
+	eval {
+		require Cache::Memcached;
+		$self->{__mc_module} = 1;
+	};
+
 	while (my($k,$v) = each (%args))
 	{
 		if ($self->can($k))	
@@ -124,8 +147,13 @@ sub memcached
 sub memcached_servers
 {
         my ($self, $value) = @_;
+
         if (defined($value))
         {
+        	if ((!$self->{__mc_module}) && (!$self->{__mc_module_fast}))
+        	{
+        	        croak("No memcached support installed, try installing Cache::Memcached or Cache::Memcached::Fast");
+        	}
                 $self->{__mc_servers} = $value;
         }
         return $self->{__mc_servers};
@@ -152,7 +180,6 @@ sub tick
 
 	if ($current_ticks_allowed > $self->ticks)
 	{
-#		cluck("OK Allowed $current_ticks_allowed, tbucket is full");
 		$self->current_allowed($self->ticks);
 		if ($self->memcached)
 		{
@@ -162,11 +189,10 @@ sub tick
 	}
 	elsif ($current_ticks_allowed < 1)
 	{
-#		cluck("Allowed $current_ticks_allowed -> no");
+		return 0;
 	}
 	else
 	{
-#		cluck("OK Allowed $current_ticks_allowed, take one away");
 		$self->current_allowed( $current_ticks_allowed - 1);
                 if ($self->memcached)
                 {
@@ -185,10 +211,32 @@ sub init
 	$self->last_tick( time() );
 	if ($self->memcached_servers)
 	{
-		my $mc = Cache::Memcached::Fast->new({ servers => $self->memcached_servers,
-						  namespace => 'leaky_bucket:', });
-		$self->memcached($mc);
-		$self->mc_sync;
+		if ($self->{__mc_module_fast})
+		{
+			eval {
+				my $mc = Cache::Memcached::Fast->new({ servers => $self->memcached_servers,
+								       namespace => 'leaky_bucket:', });
+				$self->memcached($mc);
+				$self->mc_sync;
+			};
+			if ($@)
+			{
+				cluck($@);
+			}
+		}
+		elsif ($self->{__mc_module})
+		{
+                        eval {
+                                my $mc = Cache::Memcached->new({ servers => $self->memcached_servers,
+                                                                 namespace => 'leaky_bucket:', });
+                                $self->memcached($mc);
+                                $self->mc_sync;
+                        };
+			if ($@)
+			{
+				cluck($@);
+			}
+		}
 	}
 	return;
 }
@@ -220,6 +268,11 @@ sub mc_write
 Probably some.  There is a known bug where if you are in an infinite loop you could move faster than
 memcached could be updated remotely, so you'll likely at that point only bbe limted by the local 
 counters.  I'm not sure how im going to fix this yet as this is in early development.
+
+=head1 TODO
+
+Will need to look at including some actual tests im thinking.  Maybe once we get more real usage out
+of this in our produciton environment some test cases will make themselves obvious.
  
 =head1 SEE ALSO
 

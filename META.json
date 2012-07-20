@@ -31,11 +31,9 @@
          }
       },
       "runtime" : {
-         "requires" : {
-            "Cache::Memcached::Fast" : "0.19"
-         }
+         "requires" : {}
       }
    },
    "release_status" : "stable",
-   "version" : "0.06"
+   "version" : "0.07"
 }

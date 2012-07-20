@@ -6,3 +6,8 @@ Revision history for Perl extension Algorithm::LeakyBucket.
 
 0.06  Fri Jul 20 11:07:30 EDT 2012
         - Removed old namspace base tricks.
+
+0.07  Fri Jul 20 15:44:57 EDT 2012
+	- Some servers can't install Cache::Memecahed::Fast, we added support for Cache::Memcached 
+	  for those servers where its not an option.  It still checks to see if the C version is 
+	  there though.
