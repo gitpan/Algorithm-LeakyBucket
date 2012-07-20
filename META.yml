@@ -19,4 +19,4 @@ no_index:
     - inc
 requires:
   Cache::Memcached::Fast: 0.19
-version: 0.05
+version: 0.06

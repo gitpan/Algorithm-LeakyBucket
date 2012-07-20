@@ -39,10 +39,9 @@ mod_perl implementations to keep some clients from slamming an API.
 use 5.008009;
 use strict;
 use warnings;
-use base qw(Bucket);
 use Carp qw(cluck);
 use Cache::Memcached::Fast;
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 sub new
 {

@@ -4,3 +4,5 @@ Revision history for Perl extension Algorithm::LeakyBucket.
 	- original version; created by h2xs 1.23 with options
 		-AX -n Algorithm::LeakyBucket
 
+0.06  Fri Jul 20 11:07:30 EDT 2012
+        - Removed old namspace base tricks.
