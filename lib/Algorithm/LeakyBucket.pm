@@ -6,8 +6,8 @@ Algorithm::LeakyBucket - Perl implementation of leaky bucket rate limiting
 
 =head1 SYNOPSIS
 
- use Bucket::Leaky;
- my $bucket = Bucket::Leaky->new( ticks => 1, seconds => 1 ); # one per second
+ use Algorithm::LeakyBucket;
+ my $bucket = Algorithm::LeakyBucket->new( ticks => 1, seconds => 1 ); # one per second
 
  while($something_happening)
  {
@@ -30,7 +30,7 @@ seconds.  Optionally you can pass C<memcached_servers> and C<memcached_key> to d
 processes.
 
 
- my $bucket = Bucket::Leaky->new( ticks => $ticks, seconds => $every_x_seconds,
+ my $bucket = Algorithm::LeakyBucket->new( ticks => $ticks, seconds => $every_x_seconds,
                                   memcached_key => 'some_key',
                                   memcached_servers => [ { address => 'localhost:11211' } ] );
 
@@ -52,8 +52,8 @@ probably transition it to beta once we have seen it work for a bit.
 use 5.008008;
 use strict;
 use warnings;
-use Carp qw(cluck croak);
-our $VERSION = '0.07';
+use Carp qw(cluck);
+our $VERSION = '0.08';
 
 sub new
 {
@@ -150,7 +150,7 @@ sub memcached_servers
 
         if (defined($value))
         {
-        	if ((!$self->{__mc_module}) && (!$self->{__mc_module_fast}))
+        	if ((!$self->{__mc_module}) && (!$self->{__mc_module__fast}))
         	{
         	        croak("No memcached support installed, try installing Cache::Memcached or Cache::Memcached::Fast");
         	}
